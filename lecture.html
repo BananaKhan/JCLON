@@ -103,17 +103,18 @@ function fileTypeCheck(type){
   let plainText = /^text\/plain$/
   return typeReg.test(type);
 }
-function generateBlock(outArray, lectureContainer) {
+function generateParagraph(outArray, lectureContainer) {
   if (!Array.isArray(outArray) && outArray.length == 0) {
-    console.log('generateBlock ERROR: Bad array');
+    console.log('generateParagraph ERROR: Bad array');
   }
-    let words = outArray.filter((item) => {
-      if (/^\s+$/.test(item) || item == '') {
-        return false;
-      } else {
-        return true;
-      }
-    });
+  let words = outArray.filter((item) => {
+    if (/^\s+$/.test(item) || item == '') {
+      return false;
+    } else {
+      return true;
+    }
+  });
+  // Empty paragraph generation
   if (Math.random() < 0.004) {
     for (let i = 0, block = document.createElement('div'); i < 48; i += 1) {
       let p = document.createElement('p');
@@ -126,12 +127,12 @@ function generateBlock(outArray, lectureContainer) {
   let leftover = [];
   let tmpStorage = '';
   let counter = 0;
-  let size = 0;
+  let blockSize = 0;
   let empty = false;
   let splited = false;
-  let rightPad = false;
+  let alignRight = false;
   let punctuation = '';
-  let measureRestriction = 0;
+  let quantityOfTextBlocks = 0;
   let chance = 0.2;
   if (Math.random() < chance) {
     let p = document.createElement('p');
@@ -140,17 +141,19 @@ function generateBlock(outArray, lectureContainer) {
     if (Math.random() < chance) {
       empty = true;
     }
-    measureRestriction += 1;
+    quantityOfTextBlocks += 1;
   }
-  while (words.length > counter && measureRestriction != 48) {
-    if ((measureRestriction % 4) == 0 && measureRestriction < 45 && Math.random() > 0.95 && !rightPad) {
+  // Should be only 48 blocks per paragraph
+  while (words.length > counter && quantityOfTextBlocks != 48) {
+    // Generation of empty line
+    if ((quantityOfTextBlocks % 4) == 0 && quantityOfTextBlocks < 45 && Math.random() < ( chance / 2 ) && !alignRight) {
       for (let i = 0; i < 4; i += 1) {
         let emptyElement = document.createElement('p');
         emptyElement.textContent = ' ';
         element.appendChild(emptyElement);
       }
-      measureRestriction += 4;
-    } else if (empty && !rightPad) {
+      quantityOfTextBlocks += 4;
+    } else if (empty && !alignRight) {
       let p = document.createElement('p');
       if (punctuation) {
         if (Math.random() < .5) {
@@ -171,39 +174,40 @@ function generateBlock(outArray, lectureContainer) {
         p.textContent = ' ';
       }
       element.appendChild(p);
-      empty = false;
-      if (Math.random() < chance) {
-        empty = true;
+      if (Math.random() > chance) {
+        empty = false;
       }
-      measureRestriction += 1;
+      quantityOfTextBlocks += 1;
     } else {
       let p = document.createElement('p');
-      let deeperPad = false;
-      if (rightPad) {
-        deeperPad = true;
+      let previousAlignRight = alignRight;
+      alignRight = false;
+      // Maximum 5 words per block
+      blockSize = Math.ceil(Math.random() * 5);
+      // Reducing chance of 1 word block
+      if (blockSize == 1) {
+        blockSize = Math.ceil(Math.random() * 5);
       }
-      rightPad = false;
-      size = Math.ceil(Math.random() * 5);
-      if (size == 1) {
-        size = Math.ceil(Math.random() * 5);
-      }
-      if (words.length < (counter + size)) {
-        size = words.length - counter;
+      if (words.length < (counter + blockSize)) {
+        blockSize = words.length - counter;
       }
       tmpStorage = words[counter];
-      measureRestriction += 1;
+      quantityOfTextBlocks += 1;
+      // 1 word block if punctuation detected
       if (/[.,!;:?]{1}$/.test(tmpStorage)) {
-        size = 1;
+        blockSize = 1;
       } else {
-        for (let i = 1; i < size; i +=1) {
+        for (let i = 1; i < blockSize; i +=1) {
+          // Restricting size of block to about 30 symbols full or 15 symbols if block is splitted
           if (splited && (tmpStorage + words[counter + i]).length > 15) {
-              size = i;
+              blockSize = i;
               break;
           } else if ((tmpStorage + words[counter + i]).length > 30) {
-              size = i;
+              blockSize = i;
               break;
           }
-          if (Math.random() < chance / 2 && !splited && tmpStorage.length < 16) {
+          // Split block in two parts
+          if (Math.random() < ( chance / 2 ) && !splited && tmpStorage.length < 16) {
             splited = true;
             let left = document.createElement('p');
             left.style.float = 'left';
@@ -211,24 +215,24 @@ function generateBlock(outArray, lectureContainer) {
             p.appendChild(left);
             tmpStorage = '';
           }
-          if (Math.random() < chance && /[^.,!;:?]{1}$/.test(words[counter + i]) && words[counter + i].length > 5 && !deeperPad) {
+          if (Math.random() < chance && /[^.,!;:?]{1}$/.test(words[counter + i]) && words[counter + i].length > 5 && !previousAlignRight) {
             let wordWrapSplit = Math.floor(Math.random() * (words[counter + i].length - 5) + 3);
             tmpStorage += ` ${words[counter + i].substr(0, wordWrapSplit)}-`;
             words[counter + i] = words[counter + i].substr(wordWrapSplit);
             counter -= 1;
-            size = i + 1;
-            rightPad = true;
+            blockSize = i + 1;
+            alignRight = true;
             break;
           } else {
             tmpStorage += ` ${words[counter + i]}`;
           }
           if (/[.,!;:?]{1}$/.test(words[counter + i])) {
-            size = i + 1;
+            blockSize = i + 1;
             break;
           }
         }
       }
-      if (Math.random() < chance && !deeperPad) {
+      if (Math.random() < chance && !previousAlignRight) {
         empty = true;
         if (/[.,!;:?]{1}$/.test(tmpStorage)) {
           punctuation = tmpStorage[tmpStorage.length - 1];
@@ -242,17 +246,18 @@ function generateBlock(outArray, lectureContainer) {
         p.appendChild(right);
         splited = false;
       } else {
-        if (Math.random() < chance / 8 || rightPad) {
+        if (Math.random() < chance / 8 || alignRight) {
           p.style.textAlign = 'right';
         }
         p.textContent = tmpStorage;
       }
       element.appendChild(p);
-      counter += size;
+      counter += blockSize;
     }
   }
-  if (measureRestriction != 48) {
-    for (let i = 0, len = 48 - measureRestriction; i < len; i += 1) {
+  // Padd paragraph with extra empty block to fit 48 blocks requirement
+  if (quantityOfTextBlocks != 48) {
+    for (let i = 0, len = 48 - quantityOfTextBlocks; i < len; i += 1) {
       let insertionIndex = Math.ceil(Math.random() * (element.childNodes.length - 1));
       let emptyElement = document.createElement('p');
       emptyElement.textContent = ' ';
@@ -268,7 +273,7 @@ function generateBlock(outArray, lectureContainer) {
   lectureContainer.appendChild(element);
   if (counter != words.length) {
     if ((words.length - counter) > 40) {
-      leftover = generateBlock(words.slice(0 - (words.length - counter)), lectureContainer);
+      leftover = generateParagraph(words.slice(0 - (words.length - counter)), lectureContainer);
     } else {
       leftover = words.slice(0 - (words.length - counter));
     }
@@ -284,7 +289,7 @@ function fileParser(file) {
   let lectureContainer = document.querySelector('.lecture-container');
   lectureContainer.innerHTML = '';
   if (fileTypeCheck(file.type)) {
-    infoHeader.textContent = `"${file.name.match(/(.*)\.[a-zA-Z]{3}$/)[1]}"`;
+    infoHeader.textContent = `"${file.name.match(/(.*)\.[a-zA-Z]{3,5}$/)[1]}"`;
     infoWarntings.textContent = `Size: ${Math.round(file.size / 1024)}Kb. Parsing file..`;
     dropZone.classList.add('drop-zone--full');
   } else {
@@ -295,15 +300,17 @@ function fileParser(file) {
   }
   fileReader.addEventListener('load', function(e) {
     infoWarntings.textContent = '';
+    // Extra line breaks or empty parahraphs will be filtered inside generateParagraph()
     let arr = e.target.result.split(/\r|\n/);
     let buff = [];
     for (let i = 0, len = arr.length; i < len; i += 1) {
       if (arr[i].length != 0 && !(/^[\s]+$/.test(arr[i]))) {
+        // Parapraph should be more than 350 words long
         while (i < (len - 1) && arr[i].length < 350) {
           buff = buff.concat(arr[i].split(' '));
           i += 1;
         }
-        buff = generateBlock(buff.concat(arr[i].split(' ')), lectureContainer);
+        buff = generateParagraph(buff.concat(arr[i].split(' ')), lectureContainer);
       }
     }
   });
